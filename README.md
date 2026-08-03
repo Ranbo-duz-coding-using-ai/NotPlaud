@@ -287,6 +287,28 @@ needs a wider array or a higher sample rate.
 Issues and pull requests welcome — particularly Windows and Linux testing,
 hardware builds, and native audio capture to fix the macOS Calls gap.
 
+## Disclaimer
+
+**Recording laws.** Many jurisdictions require the consent of everyone being
+recorded — including California, Florida, Illinois, Pennsylvania, Washington,
+and most of the EU. It is your responsibility to know and follow the law where
+you are. This project is intended for recording your own meetings, lectures, and
+notes with the knowledge of those present. Do not use it to record people
+covertly.
+
+**Battery safety.** This build uses a lithium-ion cell. Mis-wiring, over-
+discharging, puncturing, or charging without protection circuitry can cause
+fire. Always use a cell with a protection board and an appropriate charger, and
+never leave a DIY battery charging unattended. Build at your own risk.
+
+**Hardware.** The firmware has not been tested on physical hardware. You are
+responsible for verifying your own wiring before powering anything on.
+
+**Not affiliated.** NotPlaud is an independent open-source project. It is not
+affiliated with, endorsed by, or connected to Plaud AI or any other company.
+Product names are referenced only for comparison and remain the property of
+their respective owners.
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
