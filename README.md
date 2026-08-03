@@ -233,9 +233,9 @@ noticeably better on accents and noisy rooms, and proportionally slower.
 `large-v3` is excellent but wants a decent GPU or a lot of patience.
 
 **Which summary model should I use?**
-A 7–8B instruct model in Q4_K_M is the sweet spot — comfortably real-time on
-Apple Silicon and good enough for meeting notes. Anything smaller tends to
-invent action items.
+A 7–8B instruct model in Q4_K_M is the sweet spot — comfortably runs on most devices
+unless you are working on an absolute potato. It is recommended that you have
+at least 8GB of RAM, with 16GB of RAM being the sweet spot. 
 
 **How long does the battery last?**
 Depends on your cell. 16 kHz mono is roughly 32 KB/s, so storage is rarely the
