@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
+
+# Local editor / tooling settings — machine-specific, not part of the project.
+.claude/
+
+# NotPlaud runtime data — your notes, audio, API keys, and WiFi passwords.
+# Never commit this.
+notplaud_app/data/
