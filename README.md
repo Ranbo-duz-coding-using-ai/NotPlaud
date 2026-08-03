@@ -93,7 +93,7 @@ instant.
 | 3 × mechanical key switches | Any Cherry-style switch | $3 |
 | Li-ion cell + TP4056 charger | 500–1000 mAh | $6 |
 
-Full wiring tables are in [notplaud_esp32s3 firmware/README.md]
+Full wiring tables are in [notplaud_esp32s3 firmware/README.md](notplaud_esp32s3 firmware/README.md)
 
 ### Buttons
 
