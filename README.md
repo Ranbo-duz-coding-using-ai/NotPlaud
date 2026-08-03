@@ -94,7 +94,7 @@ instant.
 | Li-ion cell + TP4056 charger | 500–1000 mAh | $6 |
 
 Full wiring tables are in
-[`firmware/notplaud_esp32s3/README.md`](firmware/notplaud_esp32s3/README.md).
+[`firmware/notplaud_esp32s3/README.md`](notplaud_esp32s3 firmware/README.md).
 Every pin is configurable in `config.h`.
 
 ### Buttons
