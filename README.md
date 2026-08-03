@@ -1,314 +1,194 @@
-# NotPlaud
+# NotPlaud — ESP32-S3 firmware
 
-**A DIY, local-first alternative to the Plaud AI recorder.** An ESP32-S3 pill in
-your pocket records; a desktop app turns it into a written note. The AI runs on
-your own machine by default — no subscription, no cloud, nothing leaves your
-computer unless you decide it should.
+Pocket recorder: four I2S microphones, three mechanical key switches, an SD
+card, Bluetooth for settings, WiFi for uploads, and USB for bulk transfer.
 
-> **Status:** the desktop app is working and tested. The firmware is complete
-> but **has not yet been run on real hardware** — see [Project status](#project-status).
+## Buttons
 
----
+You said three switches. Here is how they map — note that "start" and "stop"
+are the same switch, because a single toggle is far less error-prone in a
+pocket than two separate keys:
 
-## Why
+| Switch     | Short press                          | Long press (1.5 s)              |
+| ---------- | ------------------------------------ | ------------------------------- |
+| `RECORD`   | Start recording / stop and save      | —                               |
+| `PAUSE`    | Pause / resume the current recording | —                               |
+| `TRANSMIT` | Upload everything not yet sent       | Re-advertise over Bluetooth     |
 
-Commercial AI recorders cost around $160 plus a subscription, and every word you
-record goes to somebody else's server. NotPlaud does the same job with about $30
-of parts, and by default your audio never leaves your machine.
+If you would rather have a dedicated stop key, change the `BTN_PAUSE` handler
+in `notplaud_esp32s3.ino` to call `recorderStop()` directly.
 
-## What it does
+## Status LED
 
-- **Records** on a pocket device with a 4-microphone array, or straight from
-  your computer for Zoom/Meet/Teams calls.
-- **Transcribes** locally with Whisper (`faster-whisper`).
-- **Writes the note** locally with any GGUF model (`llama-cpp-python`) — a
-  structured summary with key points, decisions, action items, and open
-  questions, tuned by preset.
-- **Organises** everything into folders with drag-and-drop, search, PDF export,
-  and per-note detail levels.
-- **Optionally** uses OpenAI, Google, or Claude instead, if you would rather.
+| Colour                 | Meaning                                  |
+| ---------------------- | ---------------------------------------- |
+| Dim green pulse        | Idle, ready                              |
+| Red (brightness = level) | Recording — brightness follows the mic  |
+| Amber blink            | Paused                                   |
+| Blue blink             | Uploading over WiFi                      |
+| Steady cyan            | USB handover — card is mounted on the PC |
+| Fast red blink         | Error (no SD card, card full, I2S failed)|
 
----
+## Wiring
 
-## How it works
+All pins live in `config.h`. Change them to match your build; nothing else
+needs editing.
 
-```
-┌─────────────────┐   Bluetooth LE    ┌────────────────────────────┐
-│  ESP32-S3 pill  │ ◀──── config ──── │      Desktop app           │
-│                 │                   │                            │
-│  4 × I2S mics   │ ──── WiFi ──────▶ │  ingest server :8788       │
-│  3 key switches │     upload        │           │                │
-│  SD card        │                   │           ▼                │
-│  Li-ion battery │ ──── USB ───────▶ │  transcribe (local Whisper)│
-└─────────────────┘   mass storage    │           │                │
-                                      │           ▼                │
-                                      │  summarize (local GGUF)    │
-                                      │           │                │
-                                      │           ▼                │
-                                      │  note + PDF + audio        │
-                                      └────────────────────────────┘
-```
+### Microphones (INMP441 / ICS-43434 / SPH0645)
 
-1. **Capture.** Press RECORD on the device. Four mics are mixed to mono 16 kHz
-   using the capture mode you selected, and written as WAV to the SD card. The
-   device works entirely standalone — no phone, no computer, no pairing.
-2. **Transfer.** Press TRANSMIT and it joins your WiFi and uploads everything it
-   has not sent before, then drops WiFi to save battery. Or plug in USB and the
-   card mounts as a normal drive.
-3. **Transcribe.** The app picks up new audio and runs Whisper on a background
-   worker, so the window stays responsive even though local models are slow.
-4. **Summarise.** The transcript plus your chosen preset ("Conference", "Online
-   Class"…) and detail level go to the summary model, which returns a structured
-   note with an AI-generated title.
-5. **Read.** The note appears on the Home tab, dated and titled, with the
-   original audio one click away.
+Two I2S buses, two mics each. On each bus, wire one mic's `L/R` pin to GND
+(left channel) and the other's to VDD (right channel) — that is what puts two
+mics on one bus.
 
-### Capture modes
+| Signal | Bus A (mics 1 & 2) | Bus B (mics 3 & 4) |
+| ------ | ------------------ | ------------------ |
+| BCLK   | GPIO 4             | GPIO 7             |
+| WS/LRCL| GPIO 5             | GPIO 15            |
+| SD/DOUT| GPIO 6             | GPIO 16            |
 
-| Mode | What it does | Good for |
-|---|---|---|
-| **Standard** | Plain 4-mic average | Desks, small rooms, voice notes |
-| **Wide Spectrum** | Higher gain, no gating | Group discussions, room ambience |
-| **Voice Isolation** | Time-aligned mix + 120 Hz high-pass + noise gate | Lecture halls, noisy rooms |
+Set `MIC_SPACING_M` to the real centre-to-centre spacing of your mics. The
+voice-isolation mode uses it to compute inter-mic delays, and a wrong value
+makes that mode worse than plain averaging.
 
-Averaging four mics buys roughly 6 dB against diffuse room noise on its own,
-because speech is correlated across the array and noise is not.
+### SD card (SDMMC, 1-bit)
 
-### Note presets
+| Signal | GPIO |
+| ------ | ---- |
+| CLK    | 36   |
+| CMD    | 35   |
+| D0     | 37   |
 
-Conference · Online Class · Interview · Voice Memo · General Notes — each sends
-a different instruction to the summary model. Detail runs Low → Medium → High →
-Ultra, set globally or per note, and cached per level so switching back is
-instant.
-
----
-
-## Hardware
-
-| Part | Notes | Approx. |
-|---|---|---|
-| ESP32-S3 dev board | Needs native USB; 8 MB flash or more | $8–12 |
-| 4 × I2S MEMS mics | INMP441, ICS-43434, or SPH0645 | $8 |
-| microSD card + slot | FAT32 formatted | $5 |
-| 3 × mechanical key switches | Any Cherry-style switch | $3 |
-| Li-ion cell + TP4056 charger | 500–1000 mAh | $6 |
-
-Full wiring tables are in
-[`firmware/notplaud_esp32s3/README.md`](firmware/notplaud_esp32s3/README.md).
-Every pin is configurable in `config.h`.
+Format the card as FAT32 before first use.
 
 ### Buttons
 
-| Switch | Short press | Long press |
-|---|---|---|
-| RECORD | Start / stop recording | — |
-| PAUSE | Pause / resume | — |
-| TRANSMIT | Upload everything unsent | Re-advertise over Bluetooth |
+Each switch goes between its GPIO and GND. Internal pull-ups are enabled in
+firmware, so no external resistors are needed.
 
----
+| Switch   | GPIO |
+| -------- | ---- |
+| RECORD   | 1    |
+| PAUSE    | 2    |
+| TRANSMIT | 42   |
 
-## Install
+### Battery
 
-Requires **Python 3.10+**.
+A single Li-ion cell through a charge/protection board (TP4056 or similar) into
+the board's battery input. To read the level, wire the cell through a 2:1
+divider into `BATTERY_ADC_PIN` (GPIO 9). Never feed raw cell voltage into a GPIO.
+
+## Capture modes
+
+Pushed from the app's Device tab over Bluetooth, applied on the next audio block.
+
+- **Standard** — plain average of all four mics. Averaging four mics already
+  buys roughly 6 dB against diffuse room noise, because speech is correlated
+  across the array and noise is not.
+- **Wide Spectrum** — same average with extra gain and no gating, so ambience
+  and distant speakers survive. Use it when you want to hear the whole room.
+- **Voice Isolation** — time-aligned (delay-and-sum) mix, a ~120 Hz high-pass to
+  kill HVAC rumble and handling noise, and a noise-floor-tracking gate that
+  ducks anything sitting near the floor. Fast attack so word onsets are not
+  clipped, slow release so it does not chatter between words.
+
+A candid note on beamforming: with mics ~3.5 cm apart at 16 kHz, the delay
+between adjacent mics is well under one sample, so the steering itself does very
+little at the default broadside angle. The real gains in this mode come from the
+four-mic average, the high-pass, and the gate. If you want genuine directivity,
+you need a wider array or a higher sample rate — `VOICE_STEER_DEG` is there to
+experiment with once you do.
+
+## Building and flashing
+
+### Arduino IDE
+
+1. Install the **esp32** board package by Espressif, **version 3.0.0 or newer**
+   (this firmware uses the ESP-IDF 5.x `i2s_std` driver, which 2.x does not have).
+2. Open `notplaud_esp32s3.ino`.
+3. Board: **ESP32S3 Dev Module**.
+4. Set these under Tools:
+   - USB CDC On Boot: **Enabled**
+   - USB Mode: **USB-OTG (TinyUSB)**  ← required for the SD-card-as-drive feature
+   - Partition Scheme: **Huge APP (3MB No OTA/1MB SPIFFS)** (BLE + WiFi is a big binary)
+   - PSRAM: **OPI PSRAM** if your module has it
+5. Upload.
+
+### arduino-cli
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/notplaud.git
+arduino-cli core install esp32:esp32
 ```
 
 ```bash
-cd notplaud && python3 -m venv .venv
+arduino-cli compile --fqbn esp32:esp32:esp32s3:USBMode=default,CDCOnBoot=cdc,PartitionScheme=huge_app firmware/notplaud_esp32s3
 ```
-
-**macOS / Linux:**
 
 ```bash
-.venv/bin/pip install -r notplaud_app/requirements.txt
+arduino-cli upload -p /dev/cu.usbmodem101 --fqbn esp32:esp32:esp32s3 firmware/notplaud_esp32s3
 ```
 
-**Windows:**
+No external libraries are needed — `BLEDevice`, `WiFi`, `USBMSC`, and
+`Preferences` all ship with the ESP32 core.
 
-```bat
-.venv\Scripts\pip install -r notplaud_app\requirements.txt
-```
+## Autostart on boot
 
-Linux also needs system packages for the window backend:
+There is nothing to configure. Microcontrollers are not like a Raspberry Pi:
+the flashed program *is* the boot sequence. On power-up the ESP32-S3 bootloader
+loads the app partition and calls `setup()`, then `loop()` forever. Flash once
+and the device records on battery with no computer attached.
 
-```bash
-sudo apt install python3-gi gir1.2-webkit2-4.1 libcairo2-dev
-```
+What that means practically:
 
-### Run
+- **Power on → ready to record.** Press RECORD; no host, no app, no pairing.
+- **Settings survive power loss.** Capture mode, WiFi credentials, the upload
+  address, and the pairing token are written to NVS (flash) by `configSave()`
+  and reloaded by `configLoad()` in `setup()`.
+- **The clock does not survive.** There is no battery-backed RTC, so after a
+  power cycle the device does not know the time until the app pushes settings
+  over Bluetooth or it reaches NTP during an upload. Recordings made before
+  then are named `session_boot<seconds>.wav`; the app dates those from when
+  they arrive instead of from the filename.
+- **To recover from a bad flash**, hold BOOT while tapping RESET to force the
+  ROM bootloader, then re-upload.
 
-**macOS / Linux:**
+If you want it to start recording the instant it powers on, add
+`recorderStart(deviceEpochNow());` at the end of `setup()`.
 
-```bash
-.venv/bin/python notplaud_app/desktop.py
-```
+## Getting recordings off the device
 
-**Windows:** double-click `NotPlaud.bat`, or:
+**Over WiFi.** Press TRANSMIT. The device joins the network the app told it
+about, POSTs every unsent file to `http://<computer>:8788/upload`, and marks
+each one in `notplaud/sent.txt` so it is never sent twice. Then it drops WiFi to
+save battery. Files stay on the card until you delete them.
 
-```bat
-.venv\Scripts\python notplaud_app\desktop.py
-```
+**Over USB.** Plug into the computer with a *data* cable. The device finishes
+the current recording, reboots into handover mode, and the card appears as a
+removable drive. Open the app's Settings → Transfers and press *Import from
+USB*. Unplug and it reboots back into recorder mode.
 
-macOS users can also double-click `NotPlaud.command`, which creates the
-virtualenv on first run.
+Why a reboot? Two writers on one FAT volume corrupts it, and unmounting the
+filesystem in place also destroys the card handle the USB layer needs. Rebooting
+into a mode where the firmware performs no file I/O at all makes the host the
+only writer, which is the only genuinely safe arrangement.
 
-### Flash the firmware
+## First-time setup
 
-Install the **esp32** board package by Espressif, **version 3.0.0 or newer**
-(this firmware uses the ESP-IDF 5.x `i2s_std` driver). Open
-`firmware/notplaud_esp32s3/notplaud_esp32s3.ino` in the Arduino IDE, select
-**ESP32S3 Dev Module**, set **USB Mode: USB-OTG (TinyUSB)** and **Partition
-Scheme: Huge APP**, and upload. No external libraries needed.
+1. Flash the firmware and insert a FAT32 card.
+2. Power on. The device advertises as `NotPlaud Node` over Bluetooth.
+3. Open the desktop app → **Settings → WiFi networks** and add your network.
+4. Press **Push to device now**. That single write hands over the capture mode,
+   WiFi credentials, upload address, pairing token, and current time.
+5. Press RECORD, talk, press RECORD again, then press TRANSMIT.
 
-Nothing needs configuring to make it start on boot — on a microcontroller the
-flashed program *is* the boot sequence. Power on and it is ready to record.
+## Things worth knowing
 
----
-
-## Platform support
-
-| | macOS | Windows | Linux |
-|---|---|---|---|
-| Desktop app | ✅ tested | ⚠️ untested | ⚠️ untested |
-| Local Whisper / GGUF | ✅ | ✅ | ✅ |
-| Bluetooth config push | ✅ | ⚠️ untested | ⚠️ untested |
-| WiFi upload from device | ✅ | ✅ | ✅ |
-| USB import | ✅ | ⚠️ untested | ⚠️ untested |
-| **Recording calls in-app** | ❌ see below | ✅ expected | ⚠️ untested |
-
-Cross-platform code paths exist for all three OSes (`netsh` on Windows,
-`nmcli` on Linux, drive-letter scanning for USB), but only macOS has actually
-been run. Bug reports from Windows and Linux users are very welcome.
-
-### The one known gap: recording calls on macOS
-
-The app renders in the OS's native web view. On macOS that is WebKit, which
-**does not expose `navigator.mediaDevices` to embedded web views** unless the
-host is a signed app bundle with microphone entitlements. So the **Calls tab
-cannot capture computer audio on macOS today.** It fails with a clear message
-rather than hanging.
-
-Everything else — the device recorder, transcription, summaries, folders, PDF
-export — is unaffected, and the ESP32 recording path does not touch this at all.
-
-On Windows the web view is Edge WebView2, which is Chromium-based and does
-support `getDisplayMedia`, so call recording is expected to work there.
-
-**Workaround on macOS:** run `notplaud_app/app.py` and open
-`http://127.0.0.1:8787` in Chrome or Edge to record calls. See issue tracker for
-the planned fix (native capture via `sounddevice` + BlackHole).
-
----
-
-## Privacy
-
-- **Local by default.** Both models default to on-device. Nothing is uploaded
-  unless you explicitly choose an API provider.
-- **The UI server binds to `127.0.0.1`.** The only thing listening on your
-  network is the upload receiver on port 8788, and all it accepts is an audio
-  file carrying the pairing token your device was given.
-- **Your data stays in `notplaud_app/data/`** — plain files. Back it up by
-  copying the folder.
-- **API keys and WiFi passwords** live in `data/app_state.json`, which is
-  gitignored, and are masked (`********`) whenever sent to the UI layer. You can
-  also leave keys blank and use environment variables instead.
-
----
-
-## FAQ
-
-**Do I need Chrome?**
-No. The app uses whichever web engine your OS already ships — WebKit on macOS,
-Edge WebView2 on Windows, webkit2gtk on Linux. The one exception is recording
-calls on macOS, described above.
-
-**Do I need an internet connection?**
-Only to download models the first time. After that, everything runs offline.
-
-**How good is local transcription?**
-Whisper `base` is fine for clear speech and is fast. `small` or `medium` are
-noticeably better on accents and noisy rooms, and proportionally slower.
-`large-v3` is excellent but wants a decent GPU or a lot of patience.
-
-**Which summary model should I use?**
-A 7–8B instruct model in Q4_K_M is the sweet spot — comfortably runs on most devices
-unless you are working on an absolute potato. It is recommended that you have
-at least 8GB of RAM, with 16GB of RAM being the sweet spot. 
-
-**How long does the battery last?**
-Depends on your cell. 16 kHz mono is roughly 32 KB/s, so storage is rarely the
-limit; the radios are. WiFi is only powered up during uploads, for that reason.
-
-**How much space do recordings take?**
-About 115 MB per hour. A 32 GB card holds roughly 270 hours.
-
-**Can I use it without the hardware?**
-Yes. The Calls tab and file import work standalone — the device is optional.
-
-**Is my audio sent anywhere?**
-Not unless you switch a model to an API provider. On the default settings, no
-network requests leave your machine at all.
-
-**Why is the first recording slow?**
-The model loads into memory on first use and is cached afterwards.
-
-**Can I change the note format?**
-Yes — `build_summary_prompt()` in `notplaud_app/app.py` defines the structure,
-and the presets are a list at the top of the same file.
-
-**Why does the device stop recording when I plug in USB?**
-Two writers on one FAT volume corrupts it. The device finishes the current
-recording, reboots into handover mode, and hands the card to your computer.
-Unplug and it reboots back into recorder mode.
-
----
-
-## Project status
-
-**Working and tested:** the desktop app end to end — device upload → note →
-PDF/audio/rename/move/delete, background processing, settings, theming, WiFi
-management, USB import.
-
-**Written but not hardware-tested:** the ESP32-S3 firmware. It compiles against
-the ESP32 Arduino core 3.x API, but has never run on a physical board. Expect to
-adjust pin assignments in `config.h` for your build and tune `MIC_SHIFT` to your
-microphones. Reports from anyone who builds one are hugely appreciated.
-
-**A candid note on beamforming:** with mics ~3.5 cm apart at 16 kHz, the delay
-between adjacent mics is well under one sample, so the steering in Voice
-Isolation does very little at the default angle. The real gains in that mode come
-from the 4-mic average, the high-pass, and the noise gate. Genuine directivity
-needs a wider array or a higher sample rate.
-
-## Contributing
-
-Issues and pull requests welcome — particularly Windows and Linux testing,
-hardware builds, and native audio capture to fix the macOS Calls gap.
-
-## Disclaimer
-
-**Recording laws.** Many jurisdictions require the consent of everyone being
-recorded — including California, Florida, Illinois, Pennsylvania, Washington,
-and most of the EU. It is your responsibility to know and follow the law where
-you are. This project is intended for recording your own meetings, lectures, and
-notes with the knowledge of those present. Do not use it to record people
-covertly.
-
-**Battery safety.** This build uses a lithium-ion cell. Mis-wiring, over-
-discharging, puncturing, or charging without protection circuitry can cause
-fire. Always use a cell with a protection board and an appropriate charger, and
-never leave a DIY battery charging unattended. Build at your own risk.
-
-**Hardware.** The firmware has not been tested on physical hardware. You are
-responsible for verifying your own wiring before powering anything on.
-
-**Not affiliated.** NotPlaud is an independent open-source project. It is not
-affiliated with, endorsed by, or connected to Plaud AI or any other company.
-Product names are referenced only for comparison and remain the property of
-their respective owners.
-
-## License
-
-MIT — see [LICENSE](LICENSE).
+- The WAV header is rewritten roughly once a second while recording, so a dead
+  battery mid-session leaves a playable file rather than a zero-length one.
+- Recording stops automatically when the card drops below `MIN_FREE_BYTES` (8 MB).
+- Files roll over at `MAX_FILE_BYTES` (256 MB, about 2.3 hours at 16 kHz mono)
+  so one long session is not a single enormous upload.
+- 16 kHz mono is roughly 32 KB/s — about 115 MB per hour.
+- This firmware has been written against the ESP32-S3 API but **has not been run
+  on hardware**. Expect to adjust pin assignments for your board, and check
+  `MIC_SHIFT` against your microphones' actual output level (raise it if
+  recordings clip, lower it if they are too quiet).
