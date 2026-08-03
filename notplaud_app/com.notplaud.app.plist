@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Starts NotPlaud at login on macOS.
+
+  Replace REPLACE_WITH_PROJECT_PATH below with the full path to your copy of
+  the project (run `pwd` in the project folder to get it), then:
+
+      cp notplaud_app/com.notplaud.app.plist ~/Library/LaunchAgents/
+      launchctl load -w ~/Library/LaunchAgents/com.notplaud.app.plist
+
+  To stop it launching at login:
+
+      launchctl unload -w ~/Library/LaunchAgents/com.notplaud.app.plist
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.notplaud.app</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>REPLACE_WITH_PROJECT_PATH/.venv/bin/python</string>
+        <string>REPLACE_WITH_PROJECT_PATH/notplaud_app/desktop.py</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>REPLACE_WITH_PROJECT_PATH/notplaud_app</string>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <!-- Do not relaunch when you close the window on purpose. -->
+    <key>KeepAlive</key>
+    <false/>
+
+    <key>StandardOutPath</key>
+    <string>/tmp/notplaud.log</string>
+    <key>StandardErrorPath</key>
+    <string>/tmp/notplaud.err.log</string>
+</dict>
+</plist>

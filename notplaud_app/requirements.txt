@@ -1,0 +1,28 @@
+# NotPlaud desktop app
+#
+# Core: needed to run the app at all.
+pywebview>=5.0          # native desktop window (not a browser tab)
+bleak>=0.22             # Bluetooth LE — pushes settings to the ESP32-S3
+
+# --- Platform backends for the native window ---------------------------------
+# pip installs only the ones matching your OS.
+
+# macOS: renders with Apple's built-in WebKit.
+pyobjc-core>=10.0 ; sys_platform == 'darwin'
+pyobjc-framework-Cocoa>=10.0 ; sys_platform == 'darwin'
+pyobjc-framework-WebKit>=10.0 ; sys_platform == 'darwin'
+
+# Windows: renders with the Edge WebView2 runtime, which ships with Windows 11
+# and current Windows 10. pywebview reaches it through pythonnet.
+pythonnet>=3.0 ; sys_platform == 'win32'
+
+# Linux: renders with webkit2gtk. PyGObject needs system packages first —
+#   Debian/Ubuntu: sudo apt install python3-gi gir1.2-webkit2-4.1 libcairo2-dev
+#   Fedora:        sudo dnf install python3-gobject webkit2gtk4.1
+PyGObject>=3.44 ; sys_platform == 'linux'
+
+# --- Local AI (optional but recommended) -------------------------------------
+# The app runs without these and tells you what is missing, but you need them
+# for offline transcription and summaries.
+faster-whisper>=1.0     # on-device transcription
+llama-cpp-python>=0.3   # on-device summaries from a .gguf model

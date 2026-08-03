@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>NotPlaud</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <script defer src="/static/app.js"></script>
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
+          <div>
+            <strong>NotPlaud</strong>
+            <small>Personal audio notes</small>
+          </div>
+        </div>
+
+        <nav class="primary-nav" id="primaryNav" aria-label="Primary"></nav>
+
+        <div class="theme-toggle" id="themeToggle"></div>
+
+        <div class="folder-panel">
+          <div class="panel-title">
+            <span>Folders</span>
+            <button class="icon-button" id="newFolderButton" type="button" title="New folder" aria-label="New folder"></button>
+          </div>
+          <div id="folderList" class="folder-list"></div>
+        </div>
+      </aside>
+
+      <main class="main-area">
+        <header class="topbar" id="topbar"></header>
+        <section class="page" id="page" aria-live="polite"></section>
+      </main>
+    </div>
+
+    <div id="menuRoot"></div>
+    <div id="modalRoot"></div>
+    <div id="toastRoot" class="toast-root" aria-live="assertive"></div>
+    <audio id="audioPlayer"></audio>
+  </body>
+</html>
